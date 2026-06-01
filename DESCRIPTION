@@ -1,0 +1,21 @@
+Package: pheatmapColor
+Type: Package
+Title: Better Annotation Colors for pheatmap
+Version: 0.0.1
+Authors@R: person("XiaoLi1991", email = "v9bg9rnfm4@privaterelay.appleid.com", role = c("aut", "cre"))
+Author: XiaoLi1991 [aut, cre]
+Maintainer: XiaoLi1991 <v9bg9rnfm4@privaterelay.appleid.com>
+Description: Lightweight helpers around pheatmap for nicer and more convenient
+    annotation colors in differential expression, sample grouping, and cluster
+    heatmap workflows.
+License: GPL-2
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.0.0)
+Imports:
+    pheatmap
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
