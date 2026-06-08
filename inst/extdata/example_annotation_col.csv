@@ -1,0 +1,15 @@
+,Group,Batch,Score
+Control_1,Control,B1,-2
+Control_2,Control,B2,-1.69230769230769
+Control_3,Control,B3,-1.38461538461538
+Control_4,Control,B4,-1.07692307692308
+Control_5,Control,B1,-0.769230769230769
+Control_6,Control,B2,-0.461538461538461
+Control_7,Control,B3,-0.153846153846154
+Treat_8,Treat,B4,0.153846153846154
+Treat_9,Treat,B1,0.461538461538462
+Treat_10,Treat,B2,0.769230769230769
+Treat_11,Treat,B3,1.07692307692308
+Treat_12,Treat,B4,1.38461538461539
+Treat_13,Treat,B1,1.69230769230769
+Treat_14,Treat,B2,2
