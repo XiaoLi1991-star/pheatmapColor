@@ -7,7 +7,8 @@ bio_annotation_colors(
   manual = NULL,
   palettes = NULL,
   scheme = "balanced",
-  n_gradient = 100
+  n_gradient = 100,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -16,6 +17,7 @@ bio_annotation_colors(
 \item{palettes}{Optional named list of color vectors used for selected annotation variables.}
 \item{scheme}{Built-in color scheme name. Use \code{pheatmap_schemes()} to list choices.}
 \item{n_gradient}{Number of colors for numeric annotation gradients.}
+\item{verbose}{Whether to print resolved values with \code{message()}.}
 }
 \value{
 A named list suitable for \code{pheatmap::pheatmap(annotation_colors = ...)}.
@@ -24,6 +26,10 @@ A named list suitable for \code{pheatmap::pheatmap(annotation_colors = ...)}.
 Create annotation colors for pheatmap with a publication-oriented categorical
 palette and partial manual overrides. No annotation column names or level names
 receive special presets.
+
+When \code{verbose = TRUE}, the function prints the resolved scheme, annotation
+types, levels, and generated colors with \code{message()} so agent-assisted
+tuning can use the exact previous values as a reference.
 }
 \examples{
 annotation <- data.frame(

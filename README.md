@@ -221,6 +221,48 @@ color = scheme_heatmap_palette
 border_color = NA
 ```
 
+## Resolved values for tuning
+
+By default, `pheatmap_bio()` and `bio_annotation_colors()` print the resolved
+values with `message()`. Most values are color-related rather than layout
+parameters: the selected scheme, pheatmapColor defaults, generated heatmap
+palette size, generated annotation colors, and user-supplied pheatmap arguments.
+It does not introspect pheatmap's internal layout decisions such as tree height,
+cell size, or legend placement.
+This makes iterative tuning easier, especially when an agent or a collaborator
+needs to know the exact values used in the previous plot.
+
+Example message:
+
+```text
+pheatmapColor resolved values
+pheatmap_bio:
+  user inputs:
+    scheme: muted
+    matrix: 5 rows x 4 columns
+    annotation_col: Group
+    annotation_row: none
+    pheatmap_args: silent=TRUE
+  pheatmapColor defaults:
+    heatmap_palette: scheme muted, n = 100
+    border_color: NA
+  annotation colors:
+    Group: Control=#6C7A89, Treat=#B8A36F
+  annotation_values:
+    Group: 2 levels (Control, Treat)
+```
+
+Set `verbose = FALSE` to suppress these messages:
+
+```r
+pheatmap_bio(
+  mat,
+  annotation_col = annotation_col,
+  scheme = "balanced",
+  verbose = FALSE
+)
+```
+
 You can override them:
 
 ```r

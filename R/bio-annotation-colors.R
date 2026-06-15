@@ -2,8 +2,12 @@ bio_annotation_colors <- function(annotation,
                                   manual = NULL,
                                   palettes = NULL,
                                   scheme = "balanced",
-                                  n_gradient = 100) {
+                                  n_gradient = 100,
+                                  verbose = TRUE) {
   if (is.null(annotation)) {
+    if (isTRUE(verbose)) {
+      message_resolved_annotation_params(scheme, n_gradient, list())
+    }
     return(list())
   }
   scheme_def <- get_scheme(scheme)
@@ -17,20 +21,45 @@ bio_annotation_colors <- function(annotation,
     stop("`manual` must be a named list of named color vectors.", call. = FALSE)
   }
 
+  metadata <- list()
   colors <- lapply(names(annotation), function(name) {
     values <- annotation[[name]]
     manual_values <- manual[[name]]
+    manual_names <- names(manual_values)
+    source <- annotation_color_source(manual_values, palettes[[name]])
 
     if (is.numeric(values)) {
-      return(apply_manual_colors(continuous_palette(n_gradient, scheme_def), manual_values))
+      generated <- continuous_palette(n_gradient, scheme_def)
+      resolved <- apply_manual_colors(generated, manual_values)
+      metadata[[name]] <<- list(
+        type = "numeric",
+        source = source,
+        n = length(stats::na.omit(values)),
+        colors = resolved,
+        manual = manual_names
+      )
+      return(resolved)
     }
 
     levels <- annotation_levels(values)
     generated <- discrete_annotation_palette(levels, palettes[[name]], scheme_def, name)
-    apply_manual_colors(generated, manual_values)
+    resolved <- apply_manual_colors(generated, manual_values)
+    metadata[[name]] <<- list(
+      type = "discrete",
+      source = source,
+      n = length(levels),
+      levels = levels,
+      colors = resolved,
+      manual = manual_names
+    )
+    resolved
   })
 
-  stats::setNames(colors, names(annotation))
+  colors <- stats::setNames(colors, names(annotation))
+  if (isTRUE(verbose)) {
+    message_resolved_annotation_params(scheme, n_gradient, metadata)
+  }
+  colors
 }
 
 pheatmap_schemes <- function() {
@@ -43,14 +72,17 @@ pheatmap_bio <- function(mat,
                          annotation_colors = NULL,
                          palettes = NULL,
                          scheme = "balanced",
-                         ...) {
+                         ...,
+                         verbose = TRUE) {
   annotation <- combine_annotations(annotation_col, annotation_row)
   scheme_def <- get_scheme(scheme)
+  user_args <- list(...)
   colors <- bio_annotation_colors(
     annotation,
     manual = annotation_colors,
     palettes = palettes,
-    scheme = scheme
+    scheme = scheme,
+    verbose = FALSE
   )
 
   args <- utils::modifyList(
@@ -62,8 +94,20 @@ pheatmap_bio <- function(mat,
       annotation_row = annotation_row,
       annotation_colors = colors
     ),
-    list(...)
+    user_args
   )
+
+  if (isTRUE(verbose)) {
+    message_resolved_pheatmap_params(
+      args = args,
+      scheme = scheme,
+      annotation = annotation,
+      colors = colors,
+      annotation_col = annotation_col,
+      annotation_row = annotation_row,
+      user_args = user_args
+    )
+  }
 
   do.call(pheatmap::pheatmap, args)
 }
@@ -236,4 +280,169 @@ combine_annotations <- function(annotation_col, annotation_row) {
     }
   }
   combined
+}
+
+annotation_color_source <- function(manual_values, palette) {
+  if (!is.null(manual_values) && !is.null(palette)) {
+    return("custom palette + manual override")
+  }
+  if (!is.null(manual_values)) {
+    return("scheme + manual override")
+  }
+  if (!is.null(palette)) {
+    return("custom palette")
+  }
+  "scheme"
+}
+
+message_resolved_annotation_params <- function(scheme, n_gradient, metadata) {
+  lines <- c(
+    "pheatmapColor resolved values",
+    "bio_annotation_colors:",
+    "  user inputs:",
+    paste0("    scheme: ", scheme),
+    paste0("    n_gradient: ", n_gradient)
+  )
+
+  if (length(metadata) == 0) {
+    lines <- c(lines, "  annotation colors: none")
+    message(paste(lines, collapse = "\n"))
+    return(invisible(NULL))
+  }
+
+  lines <- c(lines, "  annotation colors:")
+  for (name in names(metadata)) {
+    item <- metadata[[name]]
+    lines <- c(
+      lines,
+      paste0("    ", name, ":"),
+      paste0("      type: ", item$type),
+      paste0("      source: ", item$source),
+      paste0("      values: ", item$n),
+      paste0("      colors: ", format_resolved_colors(item$colors))
+    )
+    if (!is.null(item$manual) && length(item$manual) > 0) {
+      lines <- c(lines, paste0("      manual: ", paste(item$manual, collapse = ", ")))
+    }
+  }
+
+  message(paste(lines, collapse = "\n"))
+  invisible(NULL)
+}
+
+message_resolved_pheatmap_params <- function(args,
+                                             scheme,
+                                             annotation,
+                                             colors,
+                                             annotation_col,
+                                             annotation_row,
+                                             user_args) {
+  lines <- c(
+    "pheatmapColor resolved values",
+    "pheatmap_bio:",
+    "  user inputs:",
+    paste0("    scheme: ", scheme),
+    paste0("    matrix: ", nrow(args$mat), " rows x ", ncol(args$mat), " columns"),
+    paste0("    annotation_col: ", format_annotation_names(annotation_col)),
+    paste0("    annotation_row: ", format_annotation_names(annotation_row)),
+    paste0("    pheatmap_args: ", format_user_args(user_args)),
+    "  pheatmapColor defaults:",
+    paste0("    heatmap_palette: scheme ", scheme, ", n = ", length(args$color)),
+    paste0("    border_color: ", format_resolved_value(args$border_color))
+  )
+
+  if (length(colors) == 0) {
+    lines <- c(lines, "  annotation colors: none")
+  } else {
+    lines <- c(lines, "  annotation colors:")
+    for (name in names(colors)) {
+      lines <- c(lines, paste0("    ", name, ": ", format_resolved_colors(colors[[name]])))
+    }
+  }
+
+  if (!is.null(annotation) && length(annotation) > 0) {
+    lines <- c(lines, "  annotation_values:")
+    for (name in names(annotation)) {
+      values <- annotation[[name]]
+      if (is.numeric(values)) {
+        lines <- c(lines, paste0("    ", name, ": numeric n=", length(stats::na.omit(values))))
+      } else {
+        levels <- annotation_levels(values)
+        lines <- c(lines, paste0("    ", name, ": ", length(levels), " levels (", paste(levels, collapse = ", "), ")"))
+      }
+    }
+  }
+
+  message(paste(lines, collapse = "\n"))
+  invisible(NULL)
+}
+
+format_annotation_names <- function(annotation) {
+  if (is.null(annotation) || length(annotation) == 0) {
+    return("none")
+  }
+  paste(names(annotation), collapse = ", ")
+}
+
+format_user_args <- function(args) {
+  if (length(args) == 0) {
+    return("none")
+  }
+  names <- names(args)
+  if (is.null(names) || any(names == "")) {
+    return(paste0(length(args), " unnamed argument(s)"))
+  }
+  paste(paste0(names, "=", vapply(args, format_resolved_value, character(1))), collapse = ", ")
+}
+
+format_resolved_value <- function(value) {
+  if (is.null(value)) {
+    return("NULL")
+  }
+  if (is.list(value)) {
+    return(paste0("<list:", length(value), ">"))
+  }
+  if (length(value) == 0) {
+    return("<empty>")
+  }
+  if (length(value) > 4) {
+    return(paste0(
+      "n=", length(value),
+      " (first=", as.character(value[[1]]),
+      ", last=", as.character(value[[length(value)]]), ")"
+    ))
+  }
+  if (length(value) > 1) {
+    return(paste(value, collapse = ", "))
+  }
+  if (is.na(value)) {
+    return("NA")
+  }
+  as.character(value)
+}
+
+format_resolved_colors <- function(colors, max_colors = 12) {
+  if (length(colors) == 0) {
+    return("<empty>")
+  }
+
+  if (is.null(names(colors)) || all(names(colors) == "")) {
+    if (length(colors) <= max_colors) {
+      return(paste(colors, collapse = ", "))
+    }
+    middle <- max(1, ceiling(length(colors) / 2))
+    return(paste0(
+      "n=", length(colors),
+      " (first=", colors[[1]],
+      ", middle=", colors[[middle]],
+      ", last=", colors[[length(colors)]], ")"
+    ))
+  }
+
+  shown <- utils::head(seq_along(colors), max_colors)
+  text <- paste0(names(colors)[shown], "=", unname(colors[shown]), collapse = ", ")
+  if (length(colors) > max_colors) {
+    text <- paste0(text, ", ... (+", length(colors) - max_colors, " more)")
+  }
+  text
 }

@@ -5,12 +5,30 @@ test_that("bio_annotation_colors returns named colors for every annotation level
     stringsAsFactors = FALSE
   )
 
-  colors <- bio_annotation_colors(annotation)
+  colors <- bio_annotation_colors(annotation, verbose = FALSE)
 
   expect_named(colors, c("Compare", "Cluster"))
   expect_setequal(names(colors$Compare), c("KO-vs-WT", "WT-vs-Treat"))
   expect_setequal(names(colors$Cluster), c("C1", "C2", "C3"))
   expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", unlist(colors))))
+})
+
+test_that("bio_annotation_colors reports resolved values", {
+  annotation <- data.frame(
+    Group = c("Control", "Treat", "Control"),
+    Score = c(-1, 0, 1),
+    stringsAsFactors = FALSE
+  )
+
+  expect_message(
+    colors <- bio_annotation_colors(annotation, scheme = "balanced"),
+    "pheatmapColor resolved values"
+  )
+  expect_named(colors, c("Group", "Score"))
+
+  expect_silent(
+    bio_annotation_colors(annotation, scheme = "balanced", verbose = FALSE)
+  )
 })
 
 test_that("all built-in schemes generate valid annotation colors", {
@@ -20,7 +38,7 @@ test_that("all built-in schemes generate valid annotation colors", {
   )
 
   for (scheme in pheatmap_schemes()) {
-    colors <- bio_annotation_colors(annotation, scheme = scheme)
+    colors <- bio_annotation_colors(annotation, scheme = scheme, verbose = FALSE)
     expect_named(colors, "Group")
     expect_setequal(names(colors$Group), c("A", "B", "C"))
     expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", colors$Group)))
@@ -42,7 +60,7 @@ test_that("annotation levels do not receive hard-coded biological presets", {
     stringsAsFactors = FALSE
   )
 
-  colors <- bio_annotation_colors(annotation)
+  colors <- bio_annotation_colors(annotation, verbose = FALSE)
 
   expect_setequal(names(colors$Regulation), c("down-regulated", "up-regulated"))
   expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", colors$Regulation)))
@@ -54,7 +72,7 @@ test_that("character annotation levels keep their first-seen order", {
     stringsAsFactors = FALSE
   )
 
-  colors <- bio_annotation_colors(annotation)
+  colors <- bio_annotation_colors(annotation, verbose = FALSE)
 
   expect_identical(names(colors$Group), c("G1", "G2", "G10"))
 })
@@ -71,7 +89,8 @@ test_that("manual colors can override only selected levels", {
     manual = list(
       Regulation = c("up-regulated" = "#AA0000"),
       Compare = c("KO-vs-WT" = "#111111")
-    )
+    ),
+    verbose = FALSE
   )
 
   expect_equal(unname(colors$Regulation["up-regulated"]), "#AA0000")
@@ -87,7 +106,7 @@ test_that("many annotation levels are extended without duplicate colors", {
     stringsAsFactors = FALSE
   )
 
-  colors <- bio_annotation_colors(annotation, scheme = "soft")
+  colors <- bio_annotation_colors(annotation, scheme = "soft", verbose = FALSE)
 
   expect_length(unique(unname(colors$Group)), 18)
   expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", colors$Group)))
@@ -100,7 +119,7 @@ test_that("very many annotation levels warn about readability", {
   )
 
   expect_warning(
-    bio_annotation_colors(annotation, scheme = "contrast"),
+    bio_annotation_colors(annotation, scheme = "contrast", verbose = FALSE),
     "more than 24 levels"
   )
 })
@@ -111,7 +130,7 @@ test_that("numeric annotations are represented as gradients", {
     stringsAsFactors = FALSE
   )
 
-  colors <- bio_annotation_colors(annotation)
+  colors <- bio_annotation_colors(annotation, verbose = FALSE)
 
   expect_named(colors, "Score")
   expect_length(colors$Score, 100)
@@ -124,7 +143,7 @@ test_that("annotation lists support row and column annotations with different le
     GeneCluster = c("C1", "C2", "C3", "C4", "C5")
   )
 
-  colors <- bio_annotation_colors(annotation)
+  colors <- bio_annotation_colors(annotation, verbose = FALSE)
 
   expect_setequal(names(colors$SampleGroup), c("Control", "Treat"))
   expect_setequal(names(colors$GeneCluster), paste0("C", 1:5))
@@ -139,7 +158,27 @@ test_that("pheatmap_bio can draw with generated colors and publication defaults"
     row.names = colnames(mat)
   )
 
-  plot <- pheatmap_bio(mat, annotation_col = annotation, scheme = "muted", silent = TRUE)
+  plot <- pheatmap_bio(mat, annotation_col = annotation, scheme = "muted", silent = TRUE, verbose = FALSE)
 
   expect_s3_class(plot, "pheatmap")
+})
+
+test_that("pheatmap_bio reports resolved plotting values", {
+  mat <- matrix(rnorm(20), nrow = 5)
+  rownames(mat) <- paste0("Gene", seq_len(nrow(mat)))
+  colnames(mat) <- paste0("S", seq_len(ncol(mat)))
+  annotation <- data.frame(
+    Group = rep(c("Control", "Treat"), each = 2),
+    row.names = colnames(mat)
+  )
+
+  expect_message(
+    plot <- pheatmap_bio(mat, annotation_col = annotation, scheme = "muted", silent = TRUE),
+    "pheatmapColor defaults:"
+  )
+  expect_s3_class(plot, "pheatmap")
+
+  expect_silent(
+    pheatmap_bio(mat, annotation_col = annotation, scheme = "muted", silent = TRUE, verbose = FALSE)
+  )
 })
